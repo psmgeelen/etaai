@@ -18,8 +18,6 @@ jobs:
           python-version: 3.9
       - name: Run image
         uses: abatilo/actions-poetry@v2
-      - name: install driver
-        run: bash ../systemdeps/install_drivers.sh
       - name: Poetry Install
         run: poetry install --no-root
       - name: Run Pytest

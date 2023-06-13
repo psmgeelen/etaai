@@ -17,8 +17,11 @@ class Handler(object):
     def __init__(self):
         self.is_initialized = False
         self.logger = logging.getLogger(__name__)
-        devices = CoralWrapper.list_devices()
-        self.logger.info(f"looking for devices, found {devices}")
+        try:
+            devices = CoralWrapper.list_devices()
+            self.logger.info(f"looking for devices, found {devices}")
+        except Exception as e:
+            self.logger.warning(f"failed to look for devices, is the driver installed? Using emulator.. {e}")
 
         if len(devices) == 0:
             self.logger.warning("No devices found, using Emulator")
