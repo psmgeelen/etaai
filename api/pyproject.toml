@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "eta-ai-api"
+version = "0.1.0"
+description = ""
+authors = ["Pieter Geelen <psmgeelen@gmail.com>"]
+readme = "README.md"
+packages = [{include = "counting_cars"}]
+
+[tool.poetry.dependencies]
+python = "~3.9"
+pycoral = { file = "whls/pycoral-2.0.0-cp39-cp39-linux_x86_64.whl" }
+tflite-runtime = { file = "whls/tflite_runtime-2.5.0.post1-cp39-cp39-linux_x86_64.whl"}
+numpy = "^1.24.3"
+Pillow = "^9.5.0"
+fastapi = "^0.96.1"
+uvicorn = {extras = ["standard"], version = "^0.22.0"}
+pydantic = "^1.10.9"
+python-multipart = "^0.0.6"
+fastapi-health = "^0.4.0"
+httpx = "^0.24.1"
+pytest = "^7.3.2"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.267"
+black = "^23.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
