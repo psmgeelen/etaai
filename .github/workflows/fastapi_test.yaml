@@ -16,8 +16,12 @@ jobs:
         uses: abatilo/actions-poetry@v2
       - name: install drivers
         run: |
-          ls
-          bash systemdeps/install_drivers.sh
+          sudo apt update
+          sudo apt install gpg -y
+          echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
+          curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install libedgetpu1-std -y
           cd api
       - name: Poetry Install
         run: poetry install --no-root
