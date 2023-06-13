@@ -31,7 +31,9 @@ image_file = os.path.join(script_dir, "test/artefacts/parrot.jpg")
 
 handler = Handler()
 handler.initialize(
-    path_to_model_file=model_file, labels_file=label_file, model_name="yolo"
+    path_to_model_file="test/artefacts/tf2_ssd_mobilenet_v2_coco17_ptq_edgetpu.tflite",
+    labels_file="test/artefacts/coco_labels.txt",
+    model_name="yolo"
 )
 
 app = FastAPI()
