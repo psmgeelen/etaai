@@ -16,6 +16,7 @@ jobs:
         uses: abatilo/actions-poetry@v2
       - name: install drivers
         run: |
+          ls
           bash systemdeps/install_driver.sh
           cd api
       - name: Poetry Install
