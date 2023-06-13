@@ -1,0 +1,24 @@
+name: fastAPI-test
+
+on:
+  - pull_request
+  - workflow_dispatch
+
+defaults:
+  run:
+    working-directory: api
+
+jobs:
+ build:
+   runs-on: ubuntu-latest
+   steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Run image
+        uses: abatilo/actions-poetry@v2
+      - name: Poetry Install
+        run: poetry install --no-root
+      - name: Run Pytest
+        run: poetry run pytest .
