@@ -153,7 +153,7 @@ class DeviceEmulator(object):
                 }
             ]
         )
-        self.size = self.interpreters[0].get_input_details()[0]["shape"][1:3]
+        self.size = self.interpreters[0]["interpreter"].get_input_details()[0]["shape"][1:3]
         self.labels_file = labels_file
 
     @staticmethod
@@ -173,7 +173,7 @@ class DeviceEmulator(object):
             predictions=[SinglePrediction(label="this is an emulator", score=0.0)],
             exec_time_coral_seconds=0,
             power_consumption_coral_per_inference_mWh=0,
-            device="Emulator",
+            device={"device":"Emulator"},
         )
         return results
 
