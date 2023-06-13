@@ -17,7 +17,7 @@ jobs:
       - name: install drivers
         run: |
           ls
-          bash systemdeps/install_drivers_root.sh
+          bash systemdeps/install_drivers.sh
           cd api
       - name: Poetry Install
         run: poetry install --no-root
