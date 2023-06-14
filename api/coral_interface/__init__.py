@@ -28,6 +28,9 @@ class Handler(object):
         else:
             self.logger.info("Found hardware, starting up..")
             self.device = CoralWrapper()
+        self.model_name = None
+        self.model = None
+        self.labels = None
 
     def initialize(
         self,
@@ -55,8 +58,19 @@ class Handler(object):
             self.logger.warning(f"successfully loaded model: {model_name}")
             results.success = True
             results.description = f"successfully loaded model: {model_name}"
-        except Exception as e:
+
+            # Successfully loaded model
+            # Overwrite properties of the handler
+            self.model_name = model_name
+            self.model = path_or_bytes_model
+            self.labels = path_or_bytes_labels
+        except Exception:
             self.logger.error("failed to initialize model")
+            self.device.initialize_model(
+                model_name=self.model_name,
+                path_to_model_file=self.model,
+                labels_file=self.labels,
+            )
             results.success = False
             results.description = f"failed to load model: {model_name}"
         if callback:
@@ -93,7 +107,9 @@ class CoralWrapper(object):
         self.labels_file = None
         self.size = None
 
-    def initialize_model(self, model_name: str, path_to_model_file, labels_file):
+    def initialize_model(
+        self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
+    ):
         self.model_name = model_name
         self.interpreters = deque()
         for nr, tpu in enumerate(self.list_devices()):
@@ -160,14 +176,19 @@ class DeviceEmulator(object):
         self.size = None
 
     def initialize_model(
-        self, model_name: str, path_to_model_file: str, labels_file: str
+        self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
         self.model_name = model_name
+
+        if isinstance(path_to_model_file, bytes):
+            interpreter = tflite.Interpreter(model_content=path_to_model_file)
+        else:
+            interpreter = tflite.Interpreter(model_path=path_to_model_file)
         self.interpreters = deque(
             [
                 {
                     "name": "emulator",
-                    "interpreter": tflite.Interpreter(model_path=path_to_model_file),
+                    "interpreter": interpreter,
                 }
             ]
         )

@@ -57,4 +57,4 @@ def test_loading_new_model():
     assert (
         "description" in results
     ), "Key missing from output, check Pydantic data-object"
-    assert results["success"] == True, "Failed to load a new model"
+    assert results["success"] is True, "Failed to load a new model"
