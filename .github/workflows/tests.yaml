@@ -10,14 +10,19 @@ defaults:
 
 jobs:
  build:
+   strategy:
+     fail-fast: false
+     matrix:
+       tests: [ "poetry run pytest .", "poetry run python test/test.py" ]
    runs-on: ubuntu-latest
    steps:
       - uses: actions/checkout@v3
+      - name: Install poetry
+        run: pipx install poetry
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.9
-      - name: Run image
-        uses: abatilo/actions-poetry@v2
+          python-version: '3.9'
+          cache: 'poetry'
       - name: Install drivers
         run: |
           sudo apt update
@@ -26,17 +31,5 @@ jobs:
           curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
           sudo apt-get update
           sudo apt-get install libedgetpu1-std -y
-      - name: Poetry Install
-        run: poetry install --no-root
- test:
-  needs: build
-  runs-on: ubuntu-latest
-
-  strategy:
-   fail-fast: false
-   matrix:
-     tests: ["poetry run pytest .", "poetry run python test/test.py"]
-
-  steps:
-   - name: Run test
-     run: ${{ matrix.tests }}
+      - name: Run test
+        run: ${{ matrix.tests }}
