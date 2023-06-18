@@ -199,7 +199,7 @@ class DeviceEmulator(object):
 
     @staticmethod
     def list_devices() -> list[dict]:
-        yield [{"type": "emulator", "path": "python_lib"}]
+        return [{"type": "emulator", "path": "python_lib"}]
 
     def inference(self, resized_image, n_labels: int = 10):
         # assure that the device has been initialized
