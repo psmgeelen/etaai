@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import logging
 from PIL import Image
@@ -7,6 +8,7 @@ from pycoral.utils import dataset
 from pycoral.adapters import common
 from pycoral.adapters import classify
 import time
+
 
 # Multiple devices?
 import tflite_runtime.interpreter as tflite
@@ -26,26 +28,59 @@ class Handler(object):
         else:
             self.logger.info("Found hardware, starting up..")
             self.device = CoralWrapper()
+        self.model_name = None
+        self.model = None
+        self.labels = None
 
-    def initialize(self, model_name: str, path_to_model_file: str, labels_file: str):
+    def initialize(
+        self,
+        model_name: str,
+        path_or_bytes_model: str | bytes,
+        path_or_bytes_labels: str | bytes,
+        callback=False,
+    ) -> dict:
         # Check whether dirs exist
-        self._check_whether_file_exists(path_to_model_file)
-        self._check_whether_file_exists(labels_file)
-        # Initialize model
-        self.device.initialize_model(
-            model_name=model_name,
-            path_to_model_file=path_to_model_file,
-            labels_file=labels_file,
-        )
-        self.is_initialized = True
+        if isinstance(path_or_bytes_model, str):
+            self._check_whether_file_exists(path_or_bytes_model)
+        if isinstance(path_or_bytes_labels, str):
+            self._check_whether_file_exists(path_or_bytes_labels)
 
-    def inference(self, UUID: str, image, n_labels: int = 10) -> list[dict]:
+        results = InitResults()
+        # Initialize model
+        try:
+            self.logger.warning(f"initializing model: {model_name}")
+            self.device.initialize_model(
+                model_name=model_name,
+                path_to_model_file=path_or_bytes_model,
+                labels_file=path_or_bytes_labels,
+            )
+            self.is_initialized = True
+            self.logger.warning(f"successfully loaded model: {model_name}")
+            results.success = True
+            results.description = f"successfully loaded model: {model_name}"
+
+            # Successfully loaded model
+            # Overwrite properties of the handler
+            self.model_name = model_name
+            self.model = path_or_bytes_model
+            self.labels = path_or_bytes_labels
+        except Exception:
+            self.logger.error("failed to initialize model")
+            self.device.initialize_model(
+                model_name=self.model_name,
+                path_to_model_file=self.model,
+                labels_file=self.labels,
+            )
+            results.success = False
+            results.description = f"failed to load model: {model_name}"
+        if callback:
+            return results.dict()
+
+    def inference(self, UUID: str, image: bytes, n_labels: int = 10) -> list[dict]:
         assert (
             self.is_initialized is True
         ), "Device is not initialized, please initialize first"
 
-        # image_bytes = base64.urlsafe_b64decode(base64_image)  # im_bytes is a binary image
-        # image_file = BytesIO(image_bytes)  # convert image to file-like object
         resized_image = (
             Image.open(image).convert("RGB").resize(self.device.size, Image.AFFINE)
         )
@@ -73,7 +108,7 @@ class CoralWrapper(object):
         self.size = None
 
     def initialize_model(
-        self, model_name: str, path_to_model_file: str, labels_file: str
+        self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
         self.model_name = model_name
         self.interpreters = deque()
@@ -99,6 +134,8 @@ class CoralWrapper(object):
             )
 
         start_time_inference = time.time()
+        # Yield interpreter so that rotation happens before inference
+        self.interpreters.rotate(1)
         # Run an inference
         common.set_input(self.interpreters[0]["interpreter"], resized_image)
         self.interpreters[0]["interpreter"].invoke()
@@ -124,9 +161,6 @@ class CoralWrapper(object):
             power_consumption_coral_per_inference_mWh=2.5 * execution_time / 6000,
             device=self.interpreters[0]["name"],
         )
-        # rotate device
-        self.interpreters.rotate(1)
-
         return results
 
 
@@ -142,23 +176,30 @@ class DeviceEmulator(object):
         self.size = None
 
     def initialize_model(
-        self, model_name: str, path_to_model_file: str, labels_file: str
+        self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
         self.model_name = model_name
+
+        if isinstance(path_to_model_file, bytes):
+            interpreter = tflite.Interpreter(model_content=path_to_model_file)
+        else:
+            interpreter = tflite.Interpreter(model_path=path_to_model_file)
         self.interpreters = deque(
             [
                 {
                     "name": "emulator",
-                    "interpreter": tflite.Interpreter(model_path=path_to_model_file),
+                    "interpreter": interpreter,
                 }
             ]
         )
-        self.size = self.interpreters[0].get_input_details()[0]["shape"][1:3]
+        self.size = self.interpreters[0]["interpreter"].get_input_details()[0]["shape"][
+            1:3
+        ]
         self.labels_file = labels_file
 
     @staticmethod
     def list_devices() -> list[dict]:
-        return [{"type": "emulator", "path": "python_lib"}]
+        yield [{"type": "emulator", "path": "python_lib"}]
 
     def inference(self, resized_image, n_labels: int = 10):
         # assure that the device has been initialized
@@ -173,7 +214,7 @@ class DeviceEmulator(object):
             predictions=[SinglePrediction(label="this is an emulator", score=0.0)],
             exec_time_coral_seconds=0,
             power_consumption_coral_per_inference_mWh=0,
-            device="Emulator",
+            device={"device": "Emulator"},
         )
         return results
 
@@ -190,3 +231,8 @@ class PredictionSet(BaseModel):
     power_consumption_system_per_inference_mWh: float = 0.0
     device: dict = None
     UUID: str = None
+
+
+class InitResults(BaseModel):
+    success: bool = None
+    description: str = None

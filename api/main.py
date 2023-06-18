@@ -10,17 +10,12 @@ from coral_interface import Handler
 import logging
 
 # Setup Logger
-logging.basicConfig(format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(
+    format="%(levelname)s - %(asctime)s - %(name)s - %(message)s", level=logging.WARNING
+)
 logger = logging.getLogger("my-logger")
 stream_handler = handler = logging.StreamHandler()
 logger.addHandler(stream_handler)
-
-logger.error(
-    "Something happened",
-    extra = {"tags": {"service": "my-service"}},
-)
-
 
 script_dir = pathlib.Path(__file__).parent.absolute()
 model_file = os.path.join(
@@ -31,7 +26,7 @@ image_file = os.path.join(script_dir, "test/artefacts/parrot.jpg")
 
 handler = Handler()
 handler.initialize(
-    path_to_model_file=model_file, labels_file=label_file, model_name="yolo"
+    path_or_bytes_model=model_file, path_or_bytes_labels=label_file, model_name="yolo"
 )
 
 app = FastAPI()
@@ -39,9 +34,6 @@ app = FastAPI()
 
 # TODO, should we make this async?
 # TODO, look into documentation (sphinx and swagger)
-# TODO, look into building containers
-# TODO, look into CI
-# TODO, look into remotely initializing the device
 @app.get("/ping")
 def ping():
     return "pong"
@@ -52,9 +44,21 @@ def list_devices():
     return handler.list_devices()
 
 
-@app.put("/initialize_device")
-def list_devices():
-    return handler.list_devices()
+@app.post("/load_model")
+def load_model(
+    modelname: str = Form(...),
+    modelfile: UploadFile = File(...),
+    labelsfile: UploadFile = File(...),
+):
+    model = io.BytesIO(modelfile.file.read()).getvalue()
+    labels = io.BytesIO(labelsfile.file.read()).getvalue()
+    callback = handler.initialize(
+        model_name=modelname,
+        path_or_bytes_model=model,
+        path_or_bytes_labels=labels,
+        callback=True,
+    )
+    return callback
 
 
 @app.put("/inference")
@@ -63,7 +67,7 @@ def inference(
 ):
     start_time_call = time.time()
     try:
-        downloaded_image = image.file.read()
+        downloaded_image: bytes = image.file.read()
         results = handler.inference(
             UUID=UUID, image=io.BytesIO(downloaded_image), n_labels=nlabels
         )
