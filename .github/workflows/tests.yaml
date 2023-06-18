@@ -31,5 +31,7 @@ jobs:
           curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
           sudo apt-get update
           sudo apt-get install libedgetpu1-std -y
+      - name: Install dependencies Poetry
+        run: poetry install --no-root
       - name: Run test
         run: ${{ matrix.tests }}
