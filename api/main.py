@@ -6,7 +6,8 @@ from fastapi import FastAPI, Form, UploadFile, File
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi_health import health
-from coral_interface import Handler
+from fastapi.openapi.utils import get_openapi
+from coral_interface import Handler, PredictionSet, InitializationResults, Devices
 import logging
 
 # Setup Logger
@@ -32,19 +33,73 @@ handler.initialize(
 app = FastAPI()
 
 
-# TODO, should we make this async?
-# TODO, look into documentation (sphinx and swagger)
-@app.get("/ping")
+def my_schema():
+    DOCS_TITLE = "Eta API"
+    DOCS_VERSION = "0.1"
+    openapi_schema = get_openapi(
+        title=DOCS_TITLE,
+        version=DOCS_VERSION,
+        routes=app.routes,
+    )
+    openapi_schema["info"] = {
+        "title": DOCS_TITLE,
+        "version": DOCS_VERSION,
+        "description": (
+            "η.ai showcases low-precision AI's speed and power efficiency, offering a"
+            " free API for professionals. It explores analogue AI for even greater"
+            " gains in efficiency. The source-code to this platform is provided in this"
+            " repo."
+        ),
+        "contact": {
+            "name": "A project of geelen.io",
+            "url": "https://github.com/psmgeelen/etaai",
+        },
+        "license": {"name": "UNLICENSE", "url": "https://unlicense.org/"},
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = my_schema
+
+
+@app.get(
+    "/ping",
+    summary="Check whether we are connecting at all",
+    description="You ping, API should Pong",
+    response_description="A string saying Pong",
+)
 def ping():
     return "pong"
 
 
-@app.get("/list_devices")
+@app.get(
+    "/list_devices",
+    summary="Get a list of all the available devices",
+    description=(
+        "This request returns a list of devices. If no hardware is found, it will"
+        " return the definition of the DeviceEmulator class"
+    ),
+    response_description="A dictionary with a list of devices",
+    response_model=Devices,
+)
 def list_devices():
     return handler.list_devices()
 
 
-@app.post("/load_model")
+@app.post(
+    "/load_model",
+    summary="Load a new model into all devices that are available",
+    description=(
+        "This endpoint can serve a new tensorflow-lite model to the TPU. Please note"
+        " that it will also require the labels file. If the model fails to load, it"
+        " will automatically perform a rollback."
+    ),
+    response_description=(
+        "Postive or Negative feedback in regards to loading of the model"
+    ),
+    response_model=InitializationResults,
+)
 def load_model(
     modelname: str = Form(...),
     modelfile: UploadFile = File(...),
@@ -61,9 +116,23 @@ def load_model(
     return callback
 
 
-@app.put("/inference")
+@app.put(
+    "/inference",
+    summary="Detect what objects are in the picture",
+    description=(
+        "This endpoint enables you to send an image and get back predictions about the"
+        " object within that picture."
+    ),
+    response_description=(
+        "Predictions on the image that has been put onto the endpoint. Note that I will"
+        " also share some additional statistics to prove efficiency of this project."
+    ),
+    response_model=PredictionSet,
+)
 def inference(
-    UUID: str = Form(...), image: UploadFile = File(...), nlabels: int = Form(...)
+    UUID: str = Form(...),
+    image: UploadFile = File(...),
+    nlabels: int = Form(...),
 ):
     start_time_call = time.time()
     try:
@@ -83,14 +152,25 @@ def inference(
 # Health
 def _healthcheck_list_devices():
     devices = handler.list_devices()
-    if len(devices) != 0:
+    if len(devices.devices) != 0:
         return devices
     else:
         return "error: cant list devices"
 
 
-def _healthcheck_inference():
+def _healthcheck_inference_e2e():
+    script_dir = pathlib.Path(__file__).parent.absolute()
+    model_file = os.path.join(
+        script_dir, "test/artefacts/tf2_ssd_mobilenet_v2_coco17_ptq_edgetpu.tflite"
+    )
+    label_file = os.path.join(script_dir, "test/artefacts/coco_labels.txt")
     image_file = os.path.join(script_dir, "test/artefacts/parrot.jpg")
+
+    handler.initialize(
+        path_or_bytes_model=model_file,
+        path_or_bytes_labels=label_file,
+        model_name="yolo",
+    )
     results = handler.inference(UUID="tracking_id", image=image_file, n_labels=3)
     if results is not None:
         return "succesfully infered test image"
@@ -112,5 +192,16 @@ def _healthcheck_ping():
 
 app.add_api_route(
     "/health",
-    health([_healthcheck_list_devices, _healthcheck_inference, _healthcheck_ping]),
+    health([_healthcheck_list_devices, _healthcheck_inference_e2e, _healthcheck_ping]),
+    summary="Check the health of the service",
+    description=(
+        "The healthcheck has checks more then whether the service is up. It will check"
+        " for internet connectivity, whether the hardware is callable and does an"
+        " end-to-end test. The healthcheck therefore can become blocking of nature. Use"
+        " with caution!"
+    ),
+    response_description=(
+        "The response is only focussed around the status. 200 is OK, anything else and"
+        " there is trouble."
+    ),
 )

@@ -18,7 +18,10 @@ You can then use the API to send pictures to infer the objects that are in
 the picture. The callback is a JSON with the predictions and the power that 
 was consumed to make this happen. 
 
-The API documentation can be found here //// link to swagger
+The interactive Swagger API documentation can be found when spinning up the 
+service. The default address would be `127.0.0.1:8000`. The OpenAPI 
+documentation can then be found under at the `/docs` endpoint: `127.0.0.
+1:8000/docs`. 
 
 ### Do you wan to setup a service like this one for yourself?
 Then you can! Please note that this platform was implemented using:
@@ -34,12 +37,12 @@ You can run the code directly on your machine. In that case you need to:
    and run the API.
 4. For running the api seperately, you can use `poetry run uvicorn main:app 
    --reload`
-5. You can find the swagger documentation /////here 
+5. You can find the swagger documentation `ip-address:port/docs`
 
 If you want to run the docker-container, please make sure that you:
 1. Install the driver on your OS first using `systemdeps/install_drivers.sh`
 2. run `docker-compose up`
-3. You can find the swagger documentation /////here 
+3. You can find the swagger documentation `ip-address:port/docs`
 
 Note that the docker-compose approach adds additional services and is intended
 to be used as 

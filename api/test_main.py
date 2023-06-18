@@ -15,7 +15,8 @@ def test_ping():
 def test_list_devices():
     response = client.get("/list_devices")
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    assert isinstance(response.json()["devices"], list)
+    assert isinstance(response.json(), dict)
 
 
 def test_inference():

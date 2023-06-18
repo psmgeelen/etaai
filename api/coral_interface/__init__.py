@@ -9,20 +9,41 @@ from pycoral.adapters import common
 from pycoral.adapters import classify
 import time
 
-
 # Multiple devices?
 import tflite_runtime.interpreter as tflite
 from pydantic import BaseModel
 
 
 class Handler(object):
+    """The handler object handles 2 specific cases of operation.
+    1. The device(s) is/are detected, therefore creating a
+    que of interpreters, respective to the devices based on
+    the CoralWrapper object. The CoralWrapper handles an
+    individual device.
+    2. There are no devices detected, therefore loading the
+    DeviceEmulator in a similar fashion as when it where
+    loading CoralWrappers.
+
+    Furthermore, the Handler aims to be the interface for the
+    FastAPI implementation. One of the key aspects is to
+    pass through any requests to the devices that are available.
+    Another aspect is rotating the devices, ensuring a
+    naive load-balancing approach. The handler also manages
+    state and includes:
+
+      * Whether the devices have been initialized,
+      * What data was used for last initialization
+      * Reporting the overall process with a logger
+
+    """
+
     def __init__(self):
         self.is_initialized = False
         self.logger = logging.getLogger(__name__)
         devices = CoralWrapper.list_devices()
         self.logger.info(f"looking for devices, found {devices}")
 
-        if len(devices) == 0:
+        if len(devices.devices) == 0:
             self.logger.warning("No devices found, using Emulator")
             self.device = DeviceEmulator()
         else:
@@ -39,13 +60,32 @@ class Handler(object):
         path_or_bytes_labels: str | bytes,
         callback=False,
     ) -> dict:
+        """The initialize method initializes the Handler, and therefore the
+        associated devices. If no device is available then the handler will
+        initialize a DeviceEmulator class. The Method iterates over all
+        available devices, meaning that all devices will be initialized with
+        the same model. If initialization failed, the old model would be
+        restored on the device.
+
+        :param model_name: This is an arbitrary to track the which model has
+            been loaded.
+        :param path_or_bytes_model: The model can be loaded by pointing to
+            path or providing an object that contain the bytes.
+        :param path_or_bytes_labels: The labels can be loaded by pointing
+            to path or providing an object that contain the bytes.
+        :param callback: A boolean indicator whether a callback about
+            initialization should be returned.
+        :return: This is a callback that returns whether initialization
+            was a success of not. Note that this callback will only be
+            provided when the callback parameter is set to `True`
+        """
         # Check whether dirs exist
         if isinstance(path_or_bytes_model, str):
             self._check_whether_file_exists(path_or_bytes_model)
         if isinstance(path_or_bytes_labels, str):
             self._check_whether_file_exists(path_or_bytes_labels)
 
-        results = InitResults()
+        results = InitializationResults()
         # Initialize model
         try:
             self.logger.warning(f"initializing model: {model_name}")
@@ -76,7 +116,19 @@ class Handler(object):
         if callback:
             return results.dict()
 
-    def inference(self, UUID: str, image: bytes, n_labels: int = 10) -> list[dict]:
+    def inference(
+        self, UUID: str, image: bytes | str, n_labels: int = 10
+    ) -> list[dict]:
+        """This is wrapper function to handle to the image inference handled by
+        multiple devices The function resizes the image and parses it to the
+        CoralWrapper or DeviceEmulator class to handle the inference.
+
+        :param UUID: An arbitrary UUID that can be set by the user to
+            track their image.
+        :param image: Image in bytes that needs to be inferred.
+        :param n_labels: Amount of Labels that the users wants returned
+        :return: A list of Predictions
+        """
         assert (
             self.is_initialized is True
         ), "Device is not initialized, please initialize first"
@@ -100,6 +152,16 @@ class Handler(object):
 
 
 class CoralWrapper(object):
+    """The CoralWrapper class wraps the pycoral library into something more
+    stateful. Parameters include:
+
+    * Whether the devices have been initialized,
+    * What data was used for last initialization
+    * What model is being used
+    * What labels are associated with the outputs
+    * The size for the input, as to facilitate the image transformation.
+    """
+
     def __init__(self):
         self.model_name = None
         self.path_to_model_file = None
@@ -110,9 +172,23 @@ class CoralWrapper(object):
     def initialize_model(
         self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
+        """The initialize method initializes the devices. The Method iterates
+        over all available devices, meaning that all devices will be
+        initialized with the same model. A que object will be stored as an
+        attribute the CoralWrapper class that contains all the interpreters
+        that are being initialized here.
+
+        :param model_name: This is an arbitrary to track the which model
+            has been loaded.
+        :param path_to_model_file: The model can be loaded by pointing
+            to path or providing an object that contain the bytes.
+        :param labels_file: The labels can be loaded by pointing to path
+            or providing an object that contain the bytes.
+        :return: None
+        """
         self.model_name = model_name
         self.interpreters = deque()
-        for nr, tpu in enumerate(self.list_devices()):
+        for nr, tpu in enumerate(self.list_devices().devices):
             interpreter = edgetpu.make_interpreter(
                 model_path_or_content=path_to_model_file, device=nr
             )
@@ -122,15 +198,33 @@ class CoralWrapper(object):
         self.labels_file = labels_file
 
     @staticmethod
-    def list_devices() -> list[dict]:
-        devices = edgetpu.list_edge_tpus()
-        return devices
+    def list_devices() -> Devices:
+        """
+        This method calls on the `list_edge_tpus` method of the pycoral library
+        and return a list of dictionaries for each detected device.
 
-    def inference(self, resized_image, n_labels: int = 10):
+        :return: A list with devices
+        """
+        devices = list()
+        for item in edgetpu.list_edge_tpus():
+            devices.append(Device(type=item["type"], path=item["path"]))
+        return Devices(devices=devices)
+
+    def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
+        """This method processes the image and infers what is in the image by
+        using a TPU. Moreover, this method handles the naive load-balancing,
+        as it rotates the que of interpreters right before every invocation.
+
+        :param resized_image: Image Object that is being inferred
+        :param n_labels: Amount of labels that have to be returned later
+            on
+        :return: Predictions and other specifications
+        """
         # assure that the device has been initialized
         if self.interpreters is None:
             Exception(
-                "Please make sure that you first initialize the device before trying to use it"
+                "Please make sure that you first "
+                "initialize the device before trying to use it"
             )
 
         start_time_inference = time.time()
@@ -165,8 +259,23 @@ class CoralWrapper(object):
 
 
 class DeviceEmulator(object):
-    # This is a digital-twin of the device, emulating the expected behaviour of Google Coral. This is mainly
-    # Done for testing purposes
+    """The DeviceEmulator is a digital-twin of the device, emulating the
+    expected behaviour of Google Coral. This is mainly done for testing
+    purposes and wraps the pycoral library into something more stateful.
+
+    Parameters include:
+    * Whether the devices have been initialized,
+    * What data was used for last initialization
+    * What model is being used
+    * What labels are associated with the outputs
+    * The size for the input, as to facilitate the image transformation.
+
+    Unfortunately the setup with the Google Coral requires a specific
+    version of the pycoral and tensorflow-lite library, creating a
+    delta in functionality when it comes to creating interpreters. As
+    it stand now, it is not possible to truly load a model without a
+    Google Coral.
+    """
 
     def __init__(self):
         self.model_name = None
@@ -178,6 +287,20 @@ class DeviceEmulator(object):
     def initialize_model(
         self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
+        """The initialize method initializes the DeviceEmulator. A que object
+        will be stored as an attribute, similarly as within the CoralWrapper,
+        that contains one interpreter. Unfortunately the custom version of
+        tensorflow-lite doesn't allow for invoking the interpreter, as this
+        would require a Google Coral.
+
+        :param model_name: This is an arbitrary to track the which model
+            has been loaded.
+        :param path_to_model_file: The model can be loaded by pointing
+            to path or providing an object that contain the bytes.
+        :param labels_file: The labels can be loaded by pointing to path
+            or providing an object that contain the bytes.
+        :return: None
+        """
         self.model_name = model_name
 
         if isinstance(path_to_model_file, bytes):
@@ -198,14 +321,30 @@ class DeviceEmulator(object):
         self.labels_file = labels_file
 
     @staticmethod
-    def list_devices() -> list[dict]:
-        return [{"type": "emulator", "path": "python_lib"}]
+    def list_devices() -> Devices:
+        """
+        This method emulates the call of `list_edge_tpus` of the pycoral
+        library and return a list containing a
+        single emulator device.
+        :return: A list with a single emulator device.
+        """
+        return Devices(Device(type="emulator", path="python_lib"))
 
-    def inference(self, resized_image, n_labels: int = 10):
+    def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
+        """This method processes the image and emulate inference. Moreover,
+        this method handles the naive load-balancing, as it rotates the que of
+        interpreters right before every invocation.
+
+        :param resized_image: Image Object that is being inferred
+        :param n_labels: Amount of labels that have to be returned later
+            on
+        :return: Predictions and other specifications
+        """
         # assure that the device has been initialized
         if self.interpreters is None:
             Exception(
-                "Please make sure that you first initialize the device before trying to use it"
+                "Please make sure that you first initialize "
+                "the device before trying to use it"
             )
 
         # rotate device
@@ -233,6 +372,15 @@ class PredictionSet(BaseModel):
     UUID: str = None
 
 
-class InitResults(BaseModel):
+class InitializationResults(BaseModel):
     success: bool = None
     description: str = None
+
+
+class Device(BaseModel):
+    type: str
+    path: str
+
+
+class Devices(BaseModel):
+    devices: list[Device]
