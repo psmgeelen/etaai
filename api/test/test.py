@@ -1,4 +1,7 @@
+import sys
 import os
+sys.path.append('..')
+
 from pprint import pprint
 import pathlib
 from api.coral_interface import Handler
@@ -13,7 +16,7 @@ image_file = os.path.join(script_dir, "artefacts/parrot.jpg")
 
 handler = Handler()
 handler.initialize(
-    path_to_model_file=model_file, labels_file=label_file, model_name="yolo"
+    path_or_bytes_model=model_file, path_or_bytes_labels=label_file, model_name="yolo"
 )
 
 

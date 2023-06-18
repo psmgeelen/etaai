@@ -1,4 +1,4 @@
-name: fastAPI-test
+name: tests
 
 on:
   - pull_request
@@ -28,5 +28,15 @@ jobs:
           sudo apt-get install libedgetpu1-std -y
       - name: Poetry Install
         run: poetry install --no-root
-      - name: Run Pytest
-        run: poetry run pytest .
+ test:
+  needs: build
+  runs-on: ubuntu-latest
+
+  strategy:
+   fail-fast: false
+   matrix:
+     tests: ["poetry run pytest .", "poetry run python test/test.py"]
+
+  steps:
+   - name: Run test
+     run: ${{ matrix.tests }}
