@@ -201,7 +201,7 @@ app.add_api_route(
         " with caution!"
     ),
     response_description=(
-        "The response is only focussed around the status. 200 is OK, anything else and"
+        "The response is only focused around the status. 200 is OK, anything else and"
         " there is trouble."
     ),
 )
