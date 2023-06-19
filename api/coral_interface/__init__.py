@@ -201,7 +201,7 @@ class CoralWrapper(object):
     def list_devices() -> Devices:
         """
         This method calls on the `list_edge_tpus` method of the pycoral library
-        and return a list of dictionaries for each detected device.
+        and returns a list of dictionaries for each detected device.
 
         :return: A list with devices
         """
