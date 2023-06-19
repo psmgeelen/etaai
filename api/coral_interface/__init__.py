@@ -21,7 +21,7 @@ class Handler(object):
     the CoralWrapper object. The CoralWrapper handles an
     individual device.
     2. There are no devices detected, therefore loading the
-    DeviceEmulator in a similar fashion as when it where
+    DeviceEmulator in a similar fashion as when it were
     loading CoralWrappers.
 
     Furthermore, the Handler aims to be the interface for the
