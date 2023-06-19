@@ -324,7 +324,7 @@ class DeviceEmulator(object):
     def list_devices() -> Devices:
         """
         This method emulates the call of `list_edge_tpus` of the pycoral
-        library and return a list containing a
+        library and returns a list containing a
         single emulator device.
         :return: A list with a single emulator device.
         """
