@@ -17,7 +17,7 @@ from pydantic import BaseModel
 class Handler(object):
     """The handler object handles 2 specific cases of operation.
     1. The device(s) is/are detected, therefore creating a
-    que of interpreters, respective to the devices based on
+    queue of interpreters, respective to the devices based on
     the CoralWrapper object. The CoralWrapper handles an
     individual device.
     2. There are no devices detected, therefore loading the
