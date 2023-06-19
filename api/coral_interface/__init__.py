@@ -213,7 +213,7 @@ class CoralWrapper(object):
     def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
         """This method processes the image and infers what is in the image by
         using a TPU. Moreover, this method handles the naive load-balancing,
-        as it rotates the que of interpreters right before every invocation.
+        as it rotates the queue of interpreters right before every invocation.
 
         :param resized_image: Image Object that is being inferred
         :param n_labels: Amount of labels that have to be returned later
