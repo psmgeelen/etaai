@@ -268,7 +268,7 @@ class DeviceEmulator(object):
     * What data was used for the last initialization
     * What model is being used
     * What labels are associated with the outputs
-    * The size fo the  input-layer of the NN, as to facilitate the image 
+    * The size fo the  input-layer of the NN, as to facilitate the image
       transformation.
 
     Unfortunately the setup with the Google Coral requires a specific
@@ -331,8 +331,8 @@ class DeviceEmulator(object):
         """
         return Devices(Device(type="emulator", path="python_lib"))
 
+    def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
         """This method processes the image and emulates inference. Moreover,
-        """This method processes the image and emulate inference. Moreover,
         this method handles the naive load-balancing, as it rotates the queue of
         interpreters right before every invocation.
 
