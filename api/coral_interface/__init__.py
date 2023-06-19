@@ -120,7 +120,7 @@ class Handler(object):
         self, UUID: str, image: bytes | str, n_labels: int = 10
     ) -> list[dict]:
         """This is a wrapper function to handle the image inference handled by
-        multiple devices The function resizes the image and parses it to the
+        multiple devices. The function resizes the image and parses it to the
         CoralWrapper or DeviceEmulator class to handle the inference.
 
         :param UUID: An arbitrary UUID that can be set by the user to
