@@ -197,7 +197,7 @@ app.add_api_route(
     description=(
         "The healthcheck has checks more then whether the service is up. It will check"
         " for internet connectivity, whether the hardware is callable and does an"
-        " end-to-end test. The healthcheck therefore can become blocking of nature. Use"
+        " end-to-end test. The healthcheck therefore can become blocking by nature. Use"
         " with caution!"
     ),
     response_description=(
