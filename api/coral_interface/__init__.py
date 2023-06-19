@@ -174,7 +174,7 @@ class CoralWrapper(object):
     ):
         """The initialize method initializes the devices. The Method iterates
         over all available devices, meaning that all devices will be
-        initialized with the same model. A que object will be stored as an
+        initialized with the same model. A queue object will be stored as an
         attribute the CoralWrapper class that contains all the interpreters
         that are being initialized here.
 
