@@ -76,7 +76,7 @@ class Handler(object):
         :param callback: A boolean indicator whether a callback about
             initialization should be returned.
         :return: This is a callback that returns whether initialization
-            was a success of not. Note that this callback will only be
+            was a success or not. Note that this callback will only be
             provided when the callback parameter is set to `True`
         """
         # Check whether dirs exist
