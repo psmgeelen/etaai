@@ -332,7 +332,7 @@ class DeviceEmulator(object):
 
     def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
         """This method processes the image and emulate inference. Moreover,
-        this method handles the naive load-balancing, as it rotates the que of
+        this method handles the naive load-balancing, as it rotates the queue of
         interpreters right before every invocation.
 
         :param resized_image: Image Object that is being inferred
