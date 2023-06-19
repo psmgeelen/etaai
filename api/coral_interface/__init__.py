@@ -265,7 +265,7 @@ class DeviceEmulator(object):
 
     Parameters include:
     * Whether the devices have been initialized,
-    * What data was used for last initialization
+    * What data was used for the last initialization
     * What model is being used
     * What labels are associated with the outputs
     * The size for the input, as to facilitate the image transformation.
