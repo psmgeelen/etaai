@@ -67,8 +67,8 @@ class Handler(object):
         the same model. If initialization failed, the old model would be
         restored on the device.
 
-        :param model_name: This is an arbitrary to track the which model has
-            been loaded.
+        :param model_name: This is an arbitrary name set by the user to track
+            the which model has been loaded.
         :param path_or_bytes_model: The model can be loaded by pointing to
             path or providing an object that contain the bytes.
         :param path_or_bytes_labels: The labels can be loaded by pointing
@@ -178,8 +178,8 @@ class CoralWrapper(object):
         attribute the CoralWrapper class that contains all the interpreters
         that are being initialized here.
 
-        :param model_name: This is an arbitrary to track the which model
-            has been loaded.
+        :param model_name: This is an arbitrary name set by the user to track
+            which model has been loaded.
         :param path_to_model_file: The model can be loaded by pointing
             to path or providing an object that contain the bytes.
         :param labels_file: The labels can be loaded by pointing to path
@@ -268,7 +268,8 @@ class DeviceEmulator(object):
     * What data was used for the last initialization
     * What model is being used
     * What labels are associated with the outputs
-    * The size for the input, as to facilitate the image transformation.
+    * The size fo the  input-layer of the NN, as to facilitate the image 
+      transformation.
 
     Unfortunately the setup with the Google Coral requires a specific
     version of the pycoral and tensorflow-lite library, creating a
@@ -293,8 +294,8 @@ class DeviceEmulator(object):
         tensorflow-lite doesn't allow for invoking the interpreter, as this
         would require a Google Coral.
 
-        :param model_name: This is an arbitrary to track the which model
-            has been loaded.
+        :param model_name:  This is an arbitrary name set by the user to track
+            which model has been loaded.
         :param path_to_model_file: The model can be loaded by pointing
             to path or providing an object that contain the bytes.
         :param labels_file: The labels can be loaded by pointing to path
@@ -330,7 +331,7 @@ class DeviceEmulator(object):
         """
         return Devices(Device(type="emulator", path="python_lib"))
 
-    def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
+        """This method processes the image and emulates inference. Moreover,
         """This method processes the image and emulate inference. Moreover,
         this method handles the naive load-balancing, as it rotates the queue of
         interpreters right before every invocation.

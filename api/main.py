@@ -65,7 +65,7 @@ app.openapi = my_schema
 
 @app.get(
     "/ping",
-    summary="Check whether we are connecting at all",
+    summary="Check whether there is a connection at all",
     description="You ping, API should Pong",
     response_description="A string saying Pong",
 )
@@ -195,7 +195,7 @@ app.add_api_route(
     health([_healthcheck_list_devices, _healthcheck_inference_e2e, _healthcheck_ping]),
     summary="Check the health of the service",
     description=(
-        "The healthcheck has checks more then whether the service is up. It will check"
+        "The healthcheck checks more then whether the service is up. It will check"
         " for internet connectivity, whether the hardware is callable and does an"
         " end-to-end test. The healthcheck therefore can become blocking by nature. Use"
         " with caution!"
