@@ -329,7 +329,8 @@ class DeviceEmulator(object):
         single emulator device.
         :return: A list with a single emulator device.
         """
-        return Devices(Device(type="emulator", path="python_lib"))
+        device = [Device(type="emulator", path="python_lib")]
+        return Devices(devices = device)
 
     def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
         """This method processes the image and emulates inference. Moreover,
