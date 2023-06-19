@@ -287,7 +287,7 @@ class DeviceEmulator(object):
     def initialize_model(
         self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
-        """The initialize method initializes the DeviceEmulator. A que object
+        """The initialize method initializes the DeviceEmulator. A queue object
         will be stored as an attribute, similarly as within the CoralWrapper,
         that contains one interpreter. Unfortunately the custom version of
         tensorflow-lite doesn't allow for invoking the interpreter, as this
