@@ -273,7 +273,7 @@ class DeviceEmulator(object):
     Unfortunately the setup with the Google Coral requires a specific
     version of the pycoral and tensorflow-lite library, creating a
     delta in functionality when it comes to creating interpreters. As
-    it stand now, it is not possible to truly load a model without a
+    it stands now, it is not possible to truly load a model without a
     Google Coral.
     """
 
