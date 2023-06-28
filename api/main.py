@@ -134,15 +134,12 @@ def inference(
     image: UploadFile = File(...),
     nlabels: int = Form(...),
 ):
-    start_time_call = time.time()
     try:
         downloaded_image: bytes = image.file.read()
         results = handler.inference(
             UUID=UUID, image=io.BytesIO(downloaded_image), n_labels=nlabels
         )
-        end_time_call = time.time()
-        execution_time = end_time_call - start_time_call
-        results.power_consumption_system_per_inference_mWh = 50 * execution_time / 6000
+
         return JSONResponse(content=jsonable_encoder(results))
     except Exception as e:
         raise e

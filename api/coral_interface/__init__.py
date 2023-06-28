@@ -139,6 +139,7 @@ class Handler(object):
 
         results = self.device.inference(resized_image=resized_image, n_labels=n_labels)
         results.UUID = UUID
+        print(results)
         return results
 
     def list_devices(self):
@@ -249,10 +250,35 @@ class CoralWrapper(object):
             SinglePrediction(label=labels.get(c.id, c.id), score=float(c.score))
             for c in classes
         ]
+
+        # Assumes system power-draw as per benchmark + 2,5 watts per TPU * 4 TPU,
+        # Though being able to handle for calls at the same time therefore 40,3 watts/4 = 10,1 Watts
+        system_power_draw_in_mWh = (10.1 * 1000) * (execution_time / 3600)
+        # To convert to Kgs of CO2 we use 0.371 kgs CO2e per kWh as from as listed at
+        # https://carbonfund.org/calculation-methods/
+        carbon_foot_print_system = (0.371 / 1000000) * system_power_draw_in_mWh
+        # To calculate the carbonfootprint differnce we can use the system as described in the
+        # Benchmarks and calculate the average power consumption and speed difference
+        # https://coral.ai/docs/edgetpu/benchmarks/
+        # Average speed difference is 0,161; as in the coral can do it in 16% of the time that a
+        # Single 64-bit Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz can do it.
+        # The closest system at SPEC is a I620-G30 (Intel Xeon Gold 6152) that has a CPU with a
+        # TDP rating of 140 Watts. If we compare this with the Intel specsheet, the 6154 has a
+        # Rating of 200 Watts. We add the difference of 60 watts to the total power consumption that
+        # is measured in the reference system by spec here:
+        # https://www.spec.org/power_ssj2008/results/res2018q3/power_ssj2008-20180629-00824.html
+        # The equation therefore is:
+        # Power Draw in miliWatts * Execution Time in Hours * Carbon per mili-Watt Hour * Efficiency
+        # ((364+60) * 1000) * (execution_time / 3600) * (0.371 / 1000000) / 0.161
+        CO2_of_6152_bench = 0.0002714 * execution_time
+
         results = PredictionSet(
             predictions=predictions,
             exec_time_coral_seconds=execution_time,
-            power_consumption_coral_per_inference_mWh=2.5 * execution_time / 6000,
+            power_consumption_coral_per_inference_mWh= 2.5 * execution_time / 3600,
+            power_consumption_system_per_inference_mWh = system_power_draw_in_mWh,
+            carbon_foot_print_kilogramsCO2 = carbon_foot_print_system,
+            carbon_saved_kilogramsCO2 = CO2_of_6152_bench - carbon_foot_print_system,
             device=self.interpreters[0]["name"],
         )
         return results
@@ -370,6 +396,8 @@ class PredictionSet(BaseModel):
     exec_time_coral_seconds: float
     power_consumption_coral_per_inference_mWh: float
     power_consumption_system_per_inference_mWh: float = 0.0
+    carbon_foot_print_kilogramsCO2: float = 0.0
+    carbon_saved_kilogramsCO2: float = 0.0
     device: dict = None
     UUID: str = None
 
