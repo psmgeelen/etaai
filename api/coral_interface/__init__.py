@@ -9,20 +9,41 @@ from pycoral.adapters import common
 from pycoral.adapters import classify
 import time
 
-
 # Multiple devices?
 import tflite_runtime.interpreter as tflite
 from pydantic import BaseModel
 
 
 class Handler(object):
+    """The handler object handles 2 specific cases of operation.
+    1. The device(s) is/are detected, therefore creating a
+    queue of interpreters, respective to the devices based on
+    the CoralWrapper object. The CoralWrapper handles an
+    individual device.
+    2. There are no devices detected, therefore loading the
+    DeviceEmulator in a similar fashion as when it were
+    loading CoralWrappers.
+
+    Furthermore, the Handler aims to be the interface for the
+    FastAPI implementation. One of the key aspects is to
+    pass through any requests to the devices that are available.
+    Another aspect is rotating the devices, ensuring a
+    naive load-balancing approach. The handler also manages
+    state and includes:
+
+      * Whether the devices have been initialized,
+      * What data was used for last initialization
+      * Reporting the overall process with a logger
+
+    """
+
     def __init__(self):
         self.is_initialized = False
         self.logger = logging.getLogger(__name__)
         devices = CoralWrapper.list_devices()
         self.logger.info(f"looking for devices, found {devices}")
 
-        if len(devices) == 0:
+        if len(devices.devices) == 0:
             self.logger.warning("No devices found, using Emulator")
             self.device = DeviceEmulator()
         else:
@@ -39,13 +60,32 @@ class Handler(object):
         path_or_bytes_labels: str | bytes,
         callback=False,
     ) -> dict:
+        """The initialize method initializes the Handler, and therefore the
+        associated devices. If no device is available then the handler will
+        initialize a DeviceEmulator class. The Method iterates over all
+        available devices, meaning that all devices will be initialized with
+        the same model. If initialization failed, the old model would be
+        restored on the device.
+
+        :param model_name: This is an arbitrary name set by the user to track
+           which model has been loaded.
+        :param path_or_bytes_model: The model can be loaded by pointing to
+            path or providing an object that contain the bytes.
+        :param path_or_bytes_labels: The labels can be loaded by pointing
+            to path or providing an object that contain the bytes.
+        :param callback: A boolean indicator whether a callback about
+            initialization should be returned.
+        :return: This is a callback that returns whether initialization
+            was a success or not. Note that this callback will only be
+            provided when the callback parameter is set to `True`
+        """
         # Check whether dirs exist
         if isinstance(path_or_bytes_model, str):
             self._check_whether_file_exists(path_or_bytes_model)
         if isinstance(path_or_bytes_labels, str):
             self._check_whether_file_exists(path_or_bytes_labels)
 
-        results = InitResults()
+        results = InitializationResults()
         # Initialize model
         try:
             self.logger.warning(f"initializing model: {model_name}")
@@ -76,7 +116,19 @@ class Handler(object):
         if callback:
             return results.dict()
 
-    def inference(self, UUID: str, image: bytes, n_labels: int = 10) -> list[dict]:
+    def inference(
+        self, UUID: str, image: bytes | str, n_labels: int = 10
+    ) -> list[dict]:
+        """This is a wrapper function to handle the image inference for
+        multiple devices. The function resizes the image and parses it to the
+        CoralWrapper or DeviceEmulator class to handle the inference.
+
+        :param UUID: An arbitrary UUID that can be set by the user to
+            track their image.
+        :param image: Image in bytes that needs to be inferred.
+        :param n_labels: Amount of Labels that the user wants to return
+        :return: A list of Predictions
+        """
         assert (
             self.is_initialized is True
         ), "Device is not initialized, please initialize first"
@@ -100,6 +152,16 @@ class Handler(object):
 
 
 class CoralWrapper(object):
+    """The CoralWrapper class wraps the pycoral library into something more
+    stateful. Parameters include:
+
+    * Whether the devices have been initialized,
+    * What data was used for last initialization
+    * What model is being used
+    * What labels are associated with the outputs
+    * The size for the input, as to facilitate the image transformation.
+    """
+
     def __init__(self):
         self.model_name = None
         self.path_to_model_file = None
@@ -110,9 +172,23 @@ class CoralWrapper(object):
     def initialize_model(
         self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
+        """The initialize method initializes the devices. The Method iterates
+        over all available devices, meaning that all devices will be
+        initialized with the same model. A queue object will be stored as an
+        attribute the CoralWrapper class that contains all the interpreters
+        that are being initialized here.
+
+        :param model_name: This is an arbitrary name set by the user to track
+            which model has been loaded.
+        :param path_to_model_file: The model can be loaded by pointing
+            to a path or providing an object that contain the bytes.
+        :param labels_file: The labels can be loaded by pointing to a path
+            or providing an object that contain the bytes.
+        :return: None
+        """
         self.model_name = model_name
         self.interpreters = deque()
-        for nr, tpu in enumerate(self.list_devices()):
+        for nr, tpu in enumerate(self.list_devices().devices):
             interpreter = edgetpu.make_interpreter(
                 model_path_or_content=path_to_model_file, device=nr
             )
@@ -122,15 +198,33 @@ class CoralWrapper(object):
         self.labels_file = labels_file
 
     @staticmethod
-    def list_devices() -> list[dict]:
-        devices = edgetpu.list_edge_tpus()
-        return devices
+    def list_devices() -> Devices:
+        """
+        This method calls on the `list_edge_tpus` method of the pycoral library
+        and returns a list of dictionaries for each detected device.
 
-    def inference(self, resized_image, n_labels: int = 10):
+        :return: A list with devices
+        """
+        devices = list()
+        for item in edgetpu.list_edge_tpus():
+            devices.append(Device(type=item["type"], path=item["path"]))
+        return Devices(devices=devices)
+
+    def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
+        """This method processes the image and infers what is in the image by
+        using a TPU. Moreover, this method handles the naive load-balancing,
+        as it rotates the queue of interpreters right before every invocation.
+
+        :param resized_image: Image Object that is being inferred
+        :param n_labels: Amount of labels that have to be returned later
+            on
+        :return: Predictions and other specifications
+        """
         # assure that the device has been initialized
         if self.interpreters is None:
             Exception(
-                "Please make sure that you first initialize the device before trying to use it"
+                "Please make sure that you first "
+                "initialize the device before trying to use it"
             )
 
         start_time_inference = time.time()
@@ -155,18 +249,59 @@ class CoralWrapper(object):
             SinglePrediction(label=labels.get(c.id, c.id), score=float(c.score))
             for c in classes
         ]
+
+        # Assumes system power-draw as per benchmark + 2,5 watts per TPU * 4 TPU,
+        # Though being able to handle for calls at the same time therefore 40,3 watts/4 = 10,1 Watts
+        system_power_draw_in_mWh = (10.1 * 1000) * (execution_time / 3600)
+        # To convert to Kgs of CO2 we use 0.371 kgs CO2e per kWh as from as listed at
+        # https://carbonfund.org/calculation-methods/
+        carbon_foot_print_system = (0.371 / 1000000) * system_power_draw_in_mWh
+        # To calculate the carbonfootprint differnce we can use the system as described in the
+        # Benchmarks and calculate the average power consumption and speed difference
+        # https://coral.ai/docs/edgetpu/benchmarks/
+        # Average speed difference is 0,161; as in the coral can do it in 16% of the time that a
+        # Single 64-bit Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz can do it.
+        # The closest system at SPEC is a I620-G30 (Intel Xeon Gold 6152) that has a CPU with a
+        # TDP rating of 140 Watts. If we compare this with the Intel specsheet, the 6154 has a
+        # Rating of 200 Watts. We add the difference of 60 watts to the total power consumption that
+        # is measured in the reference system by spec here:
+        # https://www.spec.org/power_ssj2008/results/res2018q3/power_ssj2008-20180629-00824.html
+        # The equation therefore is:
+        # Power Draw in miliWatts * Execution Time in Hours * Carbon per mili-Watt Hour * Efficiency
+        # ((364+60) * 1000) * (execution_time / 3600) * (0.371 / 1000000) / 0.161
+        CO2_of_6152_bench = 0.0002714 * execution_time
+
         results = PredictionSet(
             predictions=predictions,
             exec_time_coral_seconds=execution_time,
-            power_consumption_coral_per_inference_mWh=2.5 * execution_time / 6000,
+            power_consumption_coral_per_inference_mWh= 2.5 * execution_time / 3600,
+            power_consumption_system_per_inference_mWh = system_power_draw_in_mWh,
+            carbon_foot_print_kilogramsCO2 = carbon_foot_print_system,
+            carbon_saved_kilogramsCO2 = CO2_of_6152_bench - carbon_foot_print_system,
             device=self.interpreters[0]["name"],
         )
         return results
 
 
 class DeviceEmulator(object):
-    # This is a digital-twin of the device, emulating the expected behaviour of Google Coral. This is mainly
-    # Done for testing purposes
+    """The DeviceEmulator is a digital-twin of the device, emulating the
+    expected behaviour of Google Coral. This is mainly done for testing
+    purposes and wraps the pycoral library into something more stateful.
+
+    Parameters include:
+    * Whether the devices have been initialized,
+    * What data was used for the last initialization
+    * What model is being used
+    * What labels are associated with the outputs
+    * The size fo the  input-layer of the NN, as to facilitate the image
+      transformation.
+
+    Unfortunately the setup with the Google Coral requires a specific
+    version of the pycoral and tensorflow-lite library, creating a
+    delta in functionality when it comes to creating interpreters. As
+    it stands now, it is not possible to truly load a model without a
+    Google Coral.
+    """
 
     def __init__(self):
         self.model_name = None
@@ -178,6 +313,20 @@ class DeviceEmulator(object):
     def initialize_model(
         self, model_name: str, path_to_model_file: str | bytes, labels_file: str | bytes
     ):
+        """The initialize method initializes the DeviceEmulator. A queue object
+        will be stored as an attribute, similarly as within the CoralWrapper,
+        that contains one interpreter. Unfortunately the custom version of
+        tensorflow-lite doesn't allow for invoking the interpreter, as this
+        would require a Google Coral.
+
+        :param model_name:  This is an arbitrary name set by the user to track
+            which model has been loaded.
+        :param path_to_model_file: The model can be loaded by pointing
+            to a path or providing an object that contain the bytes.
+        :param labels_file: The labels can be loaded by pointing to a path
+            or providing an object that contain the bytes.
+        :return: None
+        """
         self.model_name = model_name
 
         if isinstance(path_to_model_file, bytes):
@@ -198,14 +347,31 @@ class DeviceEmulator(object):
         self.labels_file = labels_file
 
     @staticmethod
-    def list_devices() -> list[dict]:
-        yield [{"type": "emulator", "path": "python_lib"}]
+    def list_devices() -> Devices:
+        """
+        This method emulates the call of `list_edge_tpus` of the pycoral
+        library and returns a list containing a
+        single emulator device.
+        :return: A list with a single emulator device.
+        """
+        device = [Device(type="emulator", path="python_lib")]
+        return Devices(devices = device)
 
-    def inference(self, resized_image, n_labels: int = 10):
+    def inference(self, resized_image: Image.Image, n_labels: int = 10) -> list[dict]:
+        """This method processes the image and emulates inference. Moreover,
+        this method handles the naive load-balancing, as it rotates the queue of
+        interpreters right before every invocation.
+
+        :param resized_image: Image Object that is being inferred
+        :param n_labels: Amount of labels that have to be returned later
+            on
+        :return: Predictions and other specifications
+        """
         # assure that the device has been initialized
         if self.interpreters is None:
             Exception(
-                "Please make sure that you first initialize the device before trying to use it"
+                "Please make sure that you first initialize "
+                "the device before trying to use it"
             )
 
         # rotate device
@@ -229,10 +395,21 @@ class PredictionSet(BaseModel):
     exec_time_coral_seconds: float
     power_consumption_coral_per_inference_mWh: float
     power_consumption_system_per_inference_mWh: float = 0.0
+    carbon_foot_print_kilogramsCO2: float = 0.0
+    carbon_saved_kilogramsCO2: float = 0.0
     device: dict = None
     UUID: str = None
 
 
-class InitResults(BaseModel):
+class InitializationResults(BaseModel):
     success: bool = None
     description: str = None
+
+
+class Device(BaseModel):
+    type: str
+    path: str
+
+
+class Devices(BaseModel):
+    devices: list[Device]
