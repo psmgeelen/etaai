@@ -126,7 +126,7 @@ class Handler(object):
         :param UUID: An arbitrary UUID that can be set by the user to
             track their image.
         :param image: Image in bytes that needs to be inferred.
-        :param n_labels: Amount of Labels that the users wants returned
+        :param n_labels: Amount of Labels that the user wants to return
         :return: A list of Predictions
         """
         assert (
