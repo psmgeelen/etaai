@@ -324,7 +324,7 @@ class DeviceEmulator(object):
             which model has been loaded.
         :param path_to_model_file: The model can be loaded by pointing
             to path or providing an object that contain the bytes.
-        :param labels_file: The labels can be loaded by pointing to path
+        :param labels_file: The labels can be loaded by pointing to a path
             or providing an object that contain the bytes.
         :return: None
         """
