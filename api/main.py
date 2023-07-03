@@ -192,7 +192,7 @@ app.add_api_route(
     health([_healthcheck_list_devices, _healthcheck_inference_e2e, _healthcheck_ping]),
     summary="Check the health of the service",
     description=(
-        "The healthcheck checks more then whether the service is up. It will check"
+        "The healthcheck not only checks whether the service is up, but it will also check"
         " for internet connectivity, whether the hardware is callable and does an"
         " end-to-end test. The healthcheck therefore can become blocking by nature. Use"
         " with caution!"
