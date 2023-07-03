@@ -68,7 +68,7 @@ class Handler(object):
         restored on the device.
 
         :param model_name: This is an arbitrary name set by the user to track
-            the which model has been loaded.
+           which model has been loaded.
         :param path_or_bytes_model: The model can be loaded by pointing to
             path or providing an object that contain the bytes.
         :param path_or_bytes_labels: The labels can be loaded by pointing
