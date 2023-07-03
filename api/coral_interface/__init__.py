@@ -119,7 +119,7 @@ class Handler(object):
     def inference(
         self, UUID: str, image: bytes | str, n_labels: int = 10
     ) -> list[dict]:
-        """This is a wrapper function to handle the image inference handled by
+        """This is a wrapper function to handle the image inference for
         multiple devices. The function resizes the image and parses it to the
         CoralWrapper or DeviceEmulator class to handle the inference.
 
@@ -139,7 +139,6 @@ class Handler(object):
 
         results = self.device.inference(resized_image=resized_image, n_labels=n_labels)
         results.UUID = UUID
-        print(results)
         return results
 
     def list_devices(self):
