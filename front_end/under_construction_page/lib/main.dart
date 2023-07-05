@@ -23,58 +23,64 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(
-        textTheme: GoogleFonts.robotoMonoTextTheme(),
-      ),
-      home: Scaffold(
-        backgroundColor: const Color.fromRGBO(49, 49, 58, 1),
-        body: Center(
-          child: Column(
-            children: [
-              Image.asset(
-                'assets/images/logo.jpeg',
-                alignment: Alignment.topCenter,
-                height: 300,
-              ),
-              const SizedBox(
-                height: 80,
-              ),
-              SizedBox(
-                width: 600,
-                child: RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: const TextStyle(
-                      color: Color(0xfff0f0f0),
-                      fontSize: 22,
-                    ),
-                    children: [
-                      const TextSpan(
-                          style: TextStyle(height: 1.5),
-                          text: 'Welcome to the landing page for η.ai. '
-                              'The project is still under development '
-                              'and will take some time to complete. '
-                              'If you want to follow the development, please visit the '),
-                      const WidgetSpan(
-                        child: FaIcon(
-                          FontAwesomeIcons.github,
-                          color: Color(0xfff0f0f0),
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' repo',
-                        style: const TextStyle(
-                          color: Color(0xfff16c40),
-                        ),
-                        recognizer: TapGestureRecognizer()..onTap = _launchUrl,
-                      ),
-                      const TextSpan(text: '!'),
-                    ],
+        theme: ThemeData(
+          textTheme: GoogleFonts.robotoMonoTextTheme(),
+        ),
+        home: Home());
+  }
+}
+
+class Home extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color.fromRGBO(49, 49, 58, 1),
+      body: Center(
+        child: Column(
+          children: [
+            Image.asset(
+              'assets/images/logo.jpeg',
+              alignment: Alignment.topCenter,
+              height: MediaQuery.of(context).size.height * 0.3,
+            ),
+            const SizedBox(
+              height: 80,
+            ),
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.6,
+              child: RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: const TextStyle(
+                    color: Color(0xfff0f0f0),
+                    fontSize: 22,
                   ),
+                  children: [
+                    const TextSpan(
+                        style: TextStyle(height: 1.5),
+                        text: 'Welcome to the landing page for η.ai. '
+                            'The project is still under development '
+                            'and will take some time to complete. '
+                            'If you want to follow the development, please visit the '),
+                    const WidgetSpan(
+                      child: FaIcon(
+                        FontAwesomeIcons.github,
+                        color: Color(0xfff0f0f0),
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' repo',
+                      style: const TextStyle(
+                        color: Color(0xfff16c40),
+                      ),
+                      recognizer: TapGestureRecognizer()..onTap = _launchUrl,
+                    ),
+                    const TextSpan(text: '!'),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
