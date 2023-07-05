@@ -1,11 +1,11 @@
 import sys
 import os
 
-sys.path.append("..")
+sys.path.append("../..")
 
 from pprint import pprint
 import pathlib
-from api.coral_interface import Handler
+from api.api.coral_interface import Handler
 
 # Specify the TensorFlow model, labels, and image
 script_dir = pathlib.Path(__file__).parent.absolute()

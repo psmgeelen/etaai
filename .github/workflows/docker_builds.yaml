@@ -1,4 +1,4 @@
-name: docker-build
+name: docker-builds
 
 on:
   - pull_request
@@ -7,10 +7,16 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        apps:
+          - api/.
+          - front_end/.
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
+          context: ${{ matrix.apps }}
           push: false
