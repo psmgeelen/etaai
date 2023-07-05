@@ -1,4 +1,4 @@
-name: tests
+name: api_tests
 
 on:
   - pull_request
@@ -6,7 +6,7 @@ on:
 
 defaults:
   run:
-    working-directory: api
+    working-directory: api/api
 
 jobs:
  build:
