@@ -1,6 +1,11 @@
 services:
   eta_api:
     container_name: eta_api
-    build: .
+    build: api/.
     privileged: true # required for gettings access to hardware adapters
+    network_mode: "host"
+
+  eta_frontend:
+    container_name: eta_frontend
+    build: front_end/.
     network_mode: "host"

@@ -1,0 +1,37 @@
+name: api_tests
+
+on:
+  - pull_request
+  - workflow_dispatch
+
+defaults:
+  run:
+    working-directory: api/api
+
+jobs:
+ build:
+   strategy:
+     fail-fast: false
+     matrix:
+       tests: [ "poetry run pytest .", "poetry run python test/test.py" ]
+   runs-on: ubuntu-latest
+   steps:
+      - uses: actions/checkout@v3
+      - name: Install poetry
+        run: pipx install poetry
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'poetry'
+      - name: Install drivers
+        run: |
+          sudo apt update
+          sudo apt install gpg -y
+          echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
+          curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install libedgetpu1-std -y
+      - name: Install dependencies Poetry
+        run: poetry install --no-root
+      - name: Run test
+        run: ${{ matrix.tests }}
